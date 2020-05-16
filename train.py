@@ -21,6 +21,19 @@ import torch.nn.functional as F
 import torchvision.datasets as dset
 import torchvision.transforms as transforms
 from models.model import CifarResNeXt
+import random
+from datetime import datetime
+import numpy as np
+
+def same_seeds(seed):
+    torch.manual_seed(seed)
+    if torch.cuda.is_available():
+        torch.cuda.manual_seed(seed)
+        torch.cuda.manual_seed_all(seed)  # if you are using multi-GPU.
+    np.random.seed(seed)  # Numpy module.
+    random.seed(seed)  # Python random module.
+    torch.backends.cudnn.benchmark = False
+    torch.backends.cudnn.deterministic = True
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Trains ResNeXt on CIFAR', 
@@ -52,8 +65,14 @@ if __name__ == '__main__':
     parser.add_argument('--prefetch', type=int, default=2, help='Pre-fetching threads.')
     # i/o
     parser.add_argument('--log', type=str, default='./', help='Log folder.')
+    parser.add_argument('--lms', type=int, default=0, help='0 for not usig large model support, 1 for using')
+    parser.add_argument('--seed', type=int, default=0, help='it is just seed')
     args = parser.parse_args()
 
+    st_time = datetime.now()
+    same_seeds(args.seed)
+    if args.lms == 1:
+        torch.cuda.set_enabled_lms(True)
     # Init logger
     if not os.path.isdir(args.log):
         os.makedirs(args.log)
@@ -171,3 +190,4 @@ if __name__ == '__main__':
         print("Best accuracy: %f" % best_accuracy)
 
     log.close()
+    print(f"Cost time: {datetime.now()-st_time}")
