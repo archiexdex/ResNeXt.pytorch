@@ -67,6 +67,8 @@ if __name__ == '__main__':
     parser.add_argument('--log', type=str, default='./', help='Log folder.')
     parser.add_argument('--lms', type=int, default=0, help='0 for not usig large model support, 1 for using')
     parser.add_argument('--seed', type=int, default=0, help='it is just seed')
+    parser.add_argument('--nst', type=int, default=0, help='it is for nv-nsight-cu-cli')
+
     args = parser.parse_args()
 
     st_time = datetime.now()
@@ -115,7 +117,7 @@ if __name__ == '__main__':
 
     # Init model, criterion, and optimizer
     net = CifarResNeXt(args.cardinality, args.depth, nlabels, args.base_width, args.widen_factor)
-    print(net)
+    #print(net)
     if args.ngpu > 1:
         net = torch.nn.DataParallel(net, device_ids=list(range(args.ngpu)))
 
@@ -143,6 +145,8 @@ if __name__ == '__main__':
 
             # exponential moving average
             loss_avg = loss_avg * 0.2 + float(loss) * 0.8
+            if args.nst == 1:
+                break
 
         state['train_loss'] = loss_avg
 
@@ -165,6 +169,8 @@ if __name__ == '__main__':
 
             # test loss average
             loss_avg += float(loss)
+            if args.nst == 1:
+                break
 
         state['test_loss'] = loss_avg / len(test_loader)
         state['test_accuracy'] = correct / len(test_loader.dataset)
@@ -188,6 +194,8 @@ if __name__ == '__main__':
         log.flush()
         print(state)
         print("Best accuracy: %f" % best_accuracy)
+        if args.nst == 1:
+            break
 
     log.close()
-    print(f"Cost time: {datetime.now()-st_time}")
+    print(f"Cost time: {(datetime.now()-st_time).seconds}")
