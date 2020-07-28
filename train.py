@@ -24,6 +24,7 @@ from models.model import CifarResNeXt
 import random
 from datetime import datetime
 import numpy as np
+import nvidia_smi
 
 def same_seeds(seed):
     torch.manual_seed(seed)
@@ -131,6 +132,8 @@ if __name__ == '__main__':
     def train():
         net.train()
         loss_avg = 0.0
+        if args.nst == 0:
+            nvidia_smi.nvmlInit()
         for batch_idx, (data, target) in enumerate(train_loader):
             data, target = torch.autograd.Variable(data.cuda()), torch.autograd.Variable(target.cuda())
 
@@ -148,6 +151,10 @@ if __name__ == '__main__':
             if args.nst == 1:
                 break
 
+        if args.nst == 0:
+            handle = nvidia_smi.nvmlDeviceGetHandleByIndex(0)
+            info = nvidia_smi.nvmlDeviceGetMemoryInfo(handle)
+            print(f"nvidia-smi: {info.used/1024/1024}")
         state['train_loss'] = loss_avg
 
 
@@ -175,7 +182,6 @@ if __name__ == '__main__':
         state['test_loss'] = loss_avg / len(test_loader)
         state['test_accuracy'] = correct / len(test_loader.dataset)
 
-
     # Main loop
     best_accuracy = 0.0
     for epoch in range(args.epochs):
@@ -197,5 +203,6 @@ if __name__ == '__main__':
         if args.nst == 1:
             break
 
+    nvidia_smi.nvmlShutdown()
     log.close()
     print(f"Cost time: {(datetime.now()-st_time).seconds}")
