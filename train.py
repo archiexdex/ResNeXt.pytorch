@@ -69,13 +69,20 @@ if __name__ == '__main__':
     parser.add_argument('--lms', type=int, default=0, help='0 for not usig large model support, 1 for using')
     parser.add_argument('--seed', type=int, default=0, help='it is just seed')
     parser.add_argument('--nst', type=int, default=0, help='it is for nv-nsight-cu-cli')
+    parser.add_argument('--cdn', type=int, default=1, help='it is for cudnn enable')
 
     args = parser.parse_args()
 
-    st_time = datetime.now()
+
+    if args.ngpu == 1:
+        os.environ["CUDA_VISIBLE_DEVICES"] = "0"
     same_seeds(args.seed)
     if args.lms == 1:
         torch.cuda.set_enabled_lms(True)
+        if args.cdn == 0:
+            torch.backends.cudnn.enabled = False
+
+
     # Init logger
     if not os.path.isdir(args.log):
         os.makedirs(args.log)
@@ -154,7 +161,13 @@ if __name__ == '__main__':
         if args.nst == 0:
             handle = nvidia_smi.nvmlDeviceGetHandleByIndex(0)
             info = nvidia_smi.nvmlDeviceGetMemoryInfo(handle)
-            print(f"nvidia-smi: {info.used/1024/1024}")
+            print(f"nvidia-smi: {info.used/1024//1024}")
+            if args.ngpu > 1:
+                handle = nvidia_smi.nvmlDeviceGetHandleByIndex(1)
+                info = nvidia_smi.nvmlDeviceGetMemoryInfo(handle)
+                print(f"nvidia-smi: {info.used/1024//1024}")
+            nvidia_smi.nvmlShutdown()
+
         state['train_loss'] = loss_avg
 
 
@@ -182,6 +195,7 @@ if __name__ == '__main__':
         state['test_loss'] = loss_avg / len(test_loader)
         state['test_accuracy'] = correct / len(test_loader.dataset)
 
+    st_time = datetime.now()
     # Main loop
     best_accuracy = 0.0
     for epoch in range(args.epochs):
@@ -203,6 +217,5 @@ if __name__ == '__main__':
         if args.nst == 1:
             break
 
-    nvidia_smi.nvmlShutdown()
     log.close()
     print(f"Cost time: {(datetime.now()-st_time).seconds}")
